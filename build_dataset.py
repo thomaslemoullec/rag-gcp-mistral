@@ -3,6 +3,7 @@ import pandas as pd
 from tqdm import tqdm
 from trafilatura.sitemaps import sitemap_search
 from trafilatura import fetch_url, extract, extract_metadata
+from trafilatura.meta import reset_caches
 import csv
 import sys
 import threading
@@ -18,6 +19,8 @@ config = dotenv_values(CONFIG_FILE)
 import re
 
 def extract_en_urls(text) -> list:
+    print("Extract URL from HTML Text:")
+    print(text)
     return ([word for word in text.split() if word.startswith(("https://", "http://")) and ("?hl=" not in word or word.endswith("?hl=en"))])
 
 def extract_all_urls(text) -> list:
@@ -25,6 +28,8 @@ def extract_all_urls(text) -> list:
     return re.findall(url_regex, text)
 
 def insert_urls_into_list(text, en=True) -> list:
+    print("Text in Insert:")
+    print(text)
     if en is not True:
         return extract_all_urls(text)
     return extract_en_urls(text)
@@ -34,18 +39,25 @@ def get_urls_from_sitemap(resource_url: str, k=None) -> list:
     Recovers the sitemap through Trafilatura
     """
     urls = []
+    print("URL 3:")
+    print(resource_url)
     site_map_html = fetch_url(resource_url)
-    extract_html = extract(site_map_html)
+    print("Site_MAP_HTML:")
+    print(site_map_html)
+    extract_html = extract(site_map_html, include_links=True, include_images=True, include_tables=True)
+    print("Extracted HTML:")
+    print(extract_html)
     if extract_html is not None:
         urls = insert_urls_into_list(extract_html)
     if k is not None:
         return urls[:k]
+    reset_caches()
     return urls
 
 def process_url(url, data, idx):
     html = fetch_url(url)
     if html:
-        body = extract(html)
+        body = extract(html, include_links=True, include_images=True, include_tables=True)
         metadata = extract_metadata(html)
         title = metadata.title if metadata else ""
         description = metadata.description if metadata else ""
@@ -57,6 +69,7 @@ def process_url(url, data, idx):
             "description": description
         }
         with lock:
+            reset_caches()
             data.append(d)
 
 def fetch_data_urls(sitemap_list:str) -> list:
@@ -105,15 +118,23 @@ def create_csv_index_sitemap(sitemap: list, data_path:str="./data/", file_name:s
 
 
 def create_sitemap_dict(url, sitemap_dict=None):
+    print("URL 2:")
+    print(url)
     if sitemap_dict is None:
         sitemap_dict = {}
     sitemap_dict[url] = get_urls_from_sitemap(url)
     for link in sitemap_dict[url]:
         if link.endswith(".xml"):
+            print(url)
+            print("Recursive found !")
+            print("URL:")
+            print(link)
             create_sitemap_dict(link, sitemap_dict)
     return sitemap_dict
 
 def fetch_sitemap(url, sitemap_dict=None) -> list:
+    print("URL 1:")
+    print(url)
     sitemap_dict = create_sitemap_dict(url)
     return sitemap_dict
 

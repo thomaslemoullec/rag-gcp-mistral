@@ -122,13 +122,12 @@ class Model:
             return self.llm
 
 class Dataset:
-    def __init__(self, dataset_type, db_connection:str=None, bucket_uri:str=None, create_embedding:bool=False, index_endpoint_name:str=None):
+    def __init__(self, dataset_type, db_connection:str=None, bucket_uri:str=None, create_embedding:bool=False):
         self.type = dataset_type
         self.db_connection = db_connection
         self.bucket_uri = bucket_uri
         self.create_embedding = create_embedding
         self.chunked_documents = []
-        self.index_endpoint_name=index_endpoint_name
         self.query_template = """
                 SELECT distinct q.id, q.url, q.body, q.title, q.description
                 FROM (SELECT * FROM `{table_name}`) AS q ORDER BY q.id
@@ -269,7 +268,7 @@ class Documents:
             )
 
             print(f"Embeddings directory: {embeddings_file_path}")
-            df = next(dataset._query_bq_chunks(max_rows=1000, rows_per_chunk=1000))
+            df = next(dataset._query_bq_chunks(max_rows=10000, rows_per_chunk=1000))
             is_successful, question_chunk_embeddings = self.encode_text_to_embedding_batched(
                 sentences=df.page_content.tolist()
             )
@@ -385,6 +384,8 @@ class Documents:
             # Deploy vector search index on endpoint
             print("Deploying the Vector Search index on the endpoint...")
             deployed_index_id = self.vector_db_path
+            print("Here is the deployed_index_id:")
+            print(deployed_index_id)
             my_index_endpoint = my_index_endpoint.deploy_index(
                 index=tree_ah_index, deployed_index_id=deployed_index_id
             )
@@ -394,13 +395,13 @@ class Documents:
 
         def _load_online_vector_db(self, embedding, dataset):
             print("Online DB: For Vector Search")
-
+            self.vector_db_path = dataset.db_connection.replace(".", "_")+"_vector"
+            self.vector_db_path = self.vector_db_path.replace("-", '_')
             if dataset.create_embedding is True:
                 # Create Embeddings
                 embeddings_files_path, embedding_dimensions = embedding.generate_embeddings(dataset)
 
                 # Create Vector Search Index
-                self.vector_db_path = dataset.db_connection+"_vector"
                 for embeddings_file_name in os.listdir(embeddings_files_path):
                     file_uploaded_uri = upload_to_gcs(dataset.bucket_uri, str(embeddings_files_path), embeddings_file_name, "embeddings/")
                 
@@ -408,9 +409,10 @@ class Documents:
                 print(embeddings_files_path)
                 print(index_endpoint)
             else:
-                index_endpoint = aiplatform.MatchingEngineIndexEndpoint(index_endpoint_name=dataset.index_endpoint_name)
+                # Need to change this way of fetching the endpoint so we can only use the db_connection pattern name and finally remove another env variable VECTOR_SEARCH_ENDPOINT_NAME
+                index_endpoint = aiplatform.MatchingEngineIndexEndpoint(index_endpoint_name="projects/661382003087/locations/europe-west4/indexEndpoints/5898026661995085824", project=server_state.config["PROJECT_ID"], location=server_state.config["REGION"])
             print("We have a Vector DB online !")
-            retriever_r = CustomRetriever(vector_search_endpoint=index_endpoint, embedding=embedding, dataset=dataset)
+            retriever_r = CustomRetriever(vector_search_endpoint=index_endpoint, embedding=embedding, dataset=dataset, vector_db_path=self.vector_db_path)
             return retriever_r
 
         def _create_vector_store(self, embedding, dataset):
@@ -429,6 +431,7 @@ class CustomRetriever(BaseRetriever):
     vector_search_endpoint:aiplatform.MatchingEngineIndexEndpoint
     embedding:Documents.Embedding
     dataset:Dataset
+    vector_db_path:str
 
     def _get_relevant_documents(self, query: str, *, run_manager: CallbackManagerForRetrieverRun) -> List[Document]:
         result_docs = list()
@@ -443,7 +446,7 @@ class CustomRetriever(BaseRetriever):
 
         query_embeddings = self.embedding.encode_texts_to_embeddings(sentences=[query])
         response = self.vector_search_endpoint.find_neighbors(
-            deployed_index_id=self.Dataset.vector.vector_db_path, #"thisisatestthomaslemoulleclala"
+            deployed_index_id=self.vector_db_path,
             queries=query_embeddings,
             num_neighbors=k_documents,
         )
@@ -542,8 +545,7 @@ def initialize_server():
     if "documents" not in server_state:
         print("No vector store loaded in the server")
         server_state.documents = Documents(Dataset(server_state.config["DB_TYPE"], server_state.config["DB_CONNECTION_STRING"], 
-            server_state.config["ONLINE_DATASET_BUCKET"], server_state.config["CREATE_EMBEDDINGS"], 
-            server_state.config["VECTOR_SEARCH_ENDPOINT_NAME"]))
+            server_state.config["ONLINE_DATASET_BUCKET"], server_state.config["CREATE_EMBEDDINGS"]))
     ### Check Status before Loading the app
     if "model" in server_state and "documents" in server_state:
         server_state.init_server = True
@@ -570,7 +572,7 @@ def main():
 
             Do not answer questions that are not about the Google Cloud platform.
             
-            Include the relevant documentation URL or code snippets and examples.
+            Always include the relevant documentation URL, include when possible some code snippets or examples.
 
             Given a question, you should respond with the most relevant documentation page by following the relevant context below:\n
             {context}

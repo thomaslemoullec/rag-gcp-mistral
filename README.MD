@@ -63,3 +63,12 @@ DB_TYPE="online"
 DB_CONNECTION_STRING="${PROJECT_ID}.${DATABASE}.${TABLE_NAME_DOCUMENTS}"
 CREATE_EMBEDDINGS="True"
 VECTOR_SEARCH_ENDPOINT_NAME="VECTOR_SEARCH_ENDPOINT"
+
+### 
+Run on a server : sudo apt update & sudo apt install python3-pip https://docs.nvidia.com/cuda/archive/12.1.0/cuda-installation-guide-linux/index.html and https://cloud.google.com/compute/docs/gpus/install-drivers-gpu
+#### Commands: 
+sudo systemctl stop google-cloud-ops-agent
+sudo apt update & sudo apt install python3-pip 
+sudo apt-get install linux-headers-$(uname -r)
+curl https://raw.githubusercontent.com/GoogleCloudPlatform/compute-gpu-installation/main/linux/install_gpu_driver.py --output install_gpu_driver.py
+sudo python3 install_gpu_driver.py
