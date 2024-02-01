@@ -5,15 +5,11 @@ After deploying the server, you will have the possibility to chat with an assist
 
 Launching such prototype helps to quickly get your hands on the real challenges of a RAG System. The current stage of this project is a good baseline to **start optimizing** the RAG answers **accuracy**, the **performance** of the application, the **reliability** of the overall pipeline. 
 
-```
 ![GCP Assistant Screenshot](https://github.com/thomaslemoullec/rag-gcp-mistral/blob/main/assets/gcp_assistant.png)
-```
 
 By default, this project is showcasing an assistant that provides answers based on GCP documentation. Here is the ***logical flow*** behind the project:
 
-```
 ![RAG System Logical Flow](https://github.com/thomaslemoullec/rag-gcp-mistral/blob/main/assets/logical_flow.png)
-```
 
 This project is modular as its main purpose is **prototyping** and **experimentation**: 
 
@@ -107,9 +103,7 @@ If you want to use an offline / local setup for the database and the Vector stor
 
 Here is a more advanced and scalable architecture deployment for this project:
 
-```
 ![GCP Cloud Architecture](https://github.com/thomaslemoullec/rag-gcp-mistral/blob/main/assets/cloud_architecture_rag.png)
-```
 
 
 ## Roadmap
