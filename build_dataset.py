@@ -19,8 +19,6 @@ config = dotenv_values(CONFIG_FILE)
 import re
 
 def extract_en_urls(text) -> list:
-    print("Extract URL from HTML Text:")
-    print(text)
     return ([word for word in text.split() if word.startswith(("https://", "http://")) and ("?hl=" not in word or word.endswith("?hl=en"))])
 
 def extract_all_urls(text) -> list:
@@ -28,8 +26,6 @@ def extract_all_urls(text) -> list:
     return re.findall(url_regex, text)
 
 def insert_urls_into_list(text, en=True) -> list:
-    print("Text in Insert:")
-    print(text)
     if en is not True:
         return extract_all_urls(text)
     return extract_en_urls(text)
@@ -39,14 +35,8 @@ def get_urls_from_sitemap(resource_url: str, k=None) -> list:
     Recovers the sitemap through Trafilatura
     """
     urls = []
-    print("URL 3:")
-    print(resource_url)
     site_map_html = fetch_url(resource_url)
-    print("Site_MAP_HTML:")
-    print(site_map_html)
     extract_html = extract(site_map_html, include_links=True, include_images=True, include_tables=True)
-    print("Extracted HTML:")
-    print(extract_html)
     if extract_html is not None:
         urls = insert_urls_into_list(extract_html)
     if k is not None:
@@ -118,29 +108,19 @@ def create_csv_index_sitemap(sitemap: list, data_path:str="./data/", file_name:s
 
 
 def create_sitemap_dict(url, sitemap_dict=None):
-    print("URL 2:")
-    print(url)
     if sitemap_dict is None:
         sitemap_dict = {}
     sitemap_dict[url] = get_urls_from_sitemap(url)
     for link in sitemap_dict[url]:
         if link.endswith(".xml"):
-            print(url)
-            print("Recursive found !")
-            print("URL:")
-            print(link)
             create_sitemap_dict(link, sitemap_dict)
     return sitemap_dict
 
 def fetch_sitemap(url, sitemap_dict=None) -> list:
-    print("URL 1:")
-    print(url)
     sitemap_dict = create_sitemap_dict(url)
     return sitemap_dict
 
 def create_csv_documents(data:list, data_path="./data", dataset_name="documents"):
-    print("Loading Documents Data in CSV")
-    print(data)
     csv_file_path = data_path+"/"+dataset_name
     fieldnames = ['id', 'url', 'body', 'title', 'description']
 
@@ -158,7 +138,6 @@ def extract_urls(sitemap_list=None, data_path:str="./data/", file_name:str="site
     return extract_urls_from_csv(data_path, file_name)
 
 def insert_into_bq(data:list, table_id:str):
-    print("Inserting Data into:")
     qc = bigquery.Client(project=config["PROJECT_ID"])
     dataset = qc.dataset(config["DATABASE"])
     table = dataset.table(config["TABLE_NAME_DOCUMENTS"])
@@ -219,10 +198,6 @@ def create_table(table_id:str, schema) -> str:
     except:
         print("Information : Table probably exist")
     table_id = table.project+"."+table.dataset_id+"."+table.table_id
-    print("Table ID:")
-    print(table_id)
-    print("Table object:")
-    print(table)
     return table
 
 def create_dataset(dataset_name:str, dataset_region:str="EU"):

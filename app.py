@@ -75,7 +75,7 @@ class Model:
         self.model_name = model_name
         self.llm = None
 
-    def load_model(self, task="text-generation", temperature=0.2, repetition_penalty=1.1, return_full_text=True, max_new_tokens=1000):
+    def load_model(self, task="text-generation", temperature=0.2, repetition_penalty=1.1, return_full_text=True, max_new_tokens=500):
         if not self.llm:
             print("Loading the model ...")
             tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
@@ -122,11 +122,12 @@ class Model:
             return self.llm
 
 class Dataset:
-    def __init__(self, dataset_type, db_connection:str=None, bucket_uri:str=None, create_embedding:bool=False):
+    def __init__(self, dataset_type, db_connection:str=None, bucket_uri:str=None, vector_db_endpoint:str=None, create_embedding:bool=False):
         self.type = dataset_type
         self.db_connection = db_connection
         self.bucket_uri = bucket_uri
         self.create_embedding = create_embedding
+        self.vector_db_endpoint = vector_db_endpoint
         self.chunked_documents = []
         self.query_template = """
                 SELECT distinct q.id, q.url, q.body, q.title, q.description
@@ -410,7 +411,7 @@ class Documents:
                 print(index_endpoint)
             else:
                 # Need to change this way of fetching the endpoint so we can only use the db_connection pattern name and finally remove another env variable VECTOR_SEARCH_ENDPOINT_NAME
-                index_endpoint = aiplatform.MatchingEngineIndexEndpoint(index_endpoint_name="projects/661382003087/locations/europe-west4/indexEndpoints/5898026661995085824", project=server_state.config["PROJECT_ID"], location=server_state.config["REGION"])
+                index_endpoint = aiplatform.MatchingEngineIndexEndpoint(index_endpoint_name=dataset.vector_db_endpoint, project=server_state.config["PROJECT_ID"], location=server_state.config["REGION"])
             print("We have a Vector DB online !")
             retriever_r = CustomRetriever(vector_search_endpoint=index_endpoint, embedding=embedding, dataset=dataset, vector_db_path=self.vector_db_path)
             return retriever_r
@@ -545,7 +546,7 @@ def initialize_server():
     if "documents" not in server_state:
         print("No vector store loaded in the server")
         server_state.documents = Documents(Dataset(server_state.config["DB_TYPE"], server_state.config["DB_CONNECTION_STRING"], 
-            server_state.config["ONLINE_DATASET_BUCKET"], server_state.config["CREATE_EMBEDDINGS"]))
+            server_state.config["ONLINE_DATASET_BUCKET"], server_state.config["VECTOR_DB_ENDPOINT"], server_state.config["CREATE_EMBEDDINGS"]))
     ### Check Status before Loading the app
     if "model" in server_state and "documents" in server_state:
         server_state.init_server = True

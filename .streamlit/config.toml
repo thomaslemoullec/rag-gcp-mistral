@@ -1,0 +1,6 @@
+[server]
+headless = true
+enableCORS=false
+enableXsrfProtection=false
+enableWebsocketCompression=false
+port = 8080
